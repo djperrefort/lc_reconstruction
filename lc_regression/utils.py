@@ -7,37 +7,8 @@ import numpy as np
 import sncosmo
 from astropy.time import Time
 from sndata.csp import dr1, dr3
-from tqdm import tqdm
 
 from .exceptions import NoCSPData
-
-
-def mag_to_flux(mag, zp):
-    """Convert magnitude to flux (F_nu).
-
-    Args:
-        mag (float): AB magnitude
-        zp  (float): Zero point of band
-
-    Returns:
-        Flux relative to the given zero point
-    """
-
-    return 10 ** ((mag - zp) / -2.5)
-
-
-def flux_to_mag(flux, zp):
-    """Converts flux (F_nu) to magnitude.
-
-    Args:
-        flux (float): F_nu; flux per frequency.
-        zp   (float): Zero point of band
-
-    Returns:
-        The AB magnitude
-    """
-
-    return -2.5 * np.log10(flux) + zp
 
 
 def chisq(data, error, model):
@@ -81,31 +52,6 @@ def convert_to_jd(date):
     return t.value
 
 
-def filter_has_csp_data(data_table):
-    """A filter function for an SNData table iterator
-
-    Returns whether the object ID associated with a data table has an
-    available t0 and E(B - V) value.
-
-    Args:
-        data_table (Table): A table from sndata
-
-    Returns:
-        A boolean
-    """
-
-    obj_id = data_table.meta['obj_id']
-    try:
-        get_csp_t0(obj_id)
-        get_csp_ebv(obj_id)
-
-    except NoCSPData:
-        return False
-
-    else:
-        return True
-
-
 def get_csp_t0(obj_id):
     """Get the t0 value published by CSP DR3 for a given object
 
@@ -144,23 +90,29 @@ def get_csp_ebv(obj_id):
     return data_for_target['E(B-V)'][0]
 
 
-def make_pbar(iterable, verbose, **kwargs):
-    """A wrapper for tqdm.tqdm
+def filter_has_csp_data(data_table):
+    """A filter function for an SNData table iterator
+
+    Returns whether the object ID associated with a data table has an
+    available t0 and E(B - V) value.
 
     Args:
-        iterable (iterator): Data to iterate over
-        verbose      (bool): Whether to display the progress bar
-        Any other arguments for tqdm.tqdm
+        data_table (Table): A table from sndata
 
     Returns:
-        An iterable
+        A boolean
     """
 
-    if verbose:
-        return tqdm(iterable, **kwargs)
+    obj_id = data_table.meta['obj_id']
+    try:
+        get_csp_t0(obj_id)
+        get_csp_ebv(obj_id)
+
+    except NoCSPData:
+        return False
 
     else:
-        return iterable
+        return True
 
 
 def get_effective_wavelength(band_name):
