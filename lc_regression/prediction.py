@@ -6,7 +6,6 @@ regression.
 """
 
 import numpy as np
-from sndata import get_zp
 
 from .utils import get_effective_wavelength
 
@@ -57,52 +56,3 @@ def predict_light_curve(gp, bands, times):
         raise ValueError('Times must be a one or two dimensional list')
 
     return lc[:, 0], lc[:, 1]
-
-
-def predict_color(gp, time, band1, band2):
-    """Return the color value modeled by a gaussian regression
-
-    Returns the band1 - band2 color. Assumes fluxes returned by the
-    Gaussian regression are measured relative to the same zero point.
-
-    Args:
-        gp     (GP): A fitted gaussian process
-        time (list): A 2d array of times for each band combination
-        band1 (str): Name of the first band in the magnitude difference
-        band2 (str): Name of the second band in the magnitude difference
-
-    Returns:
-        The predicted color
-        The error in the predicted color
-    """
-
-    zp1 = get_zp(band1)
-    zp2 = get_zp(band2)
-
-    band1_pred, band1_err = predict_band_flux(gp, band1, time)
-    band2_pred, band2_err = predict_band_flux(gp, band2, time)
-    color = -2.5 * (np.log10(band1_pred) - np.log10(band2_pred)) + zp1 - zp2
-
-    band1_err_term = ((-2.5 * band1_err) / (np.log(10) * band1_pred)) ** 2
-    band2_err_term = ((-2.5 * band2_err) / (np.log(10) * band2_pred)) ** 2
-    error = np.sqrt(band1_err_term + band2_err_term)
-    return color, error
-
-
-def predict_c_15(gp, band1, band2, t0=0):
-    """Return the change in color over 15 days
-
-    Args:
-        gp     (GP): A fitted gaussian process
-        band1 (str): Name of the first band in the magnitude difference
-        band2 (str): Name of the second band in the magnitude difference
-        t0  (float): Time of maximum (Default: 0)
-
-    Returns:
-        The change in color over 15 days
-        The error in the change in color
-    """
-
-    c15, err15 = predict_color(gp, [15 + t0], band1, band2)
-    c0, err0 = predict_color(gp, [0 + t0], band1, band2)
-    return c15 - c0, err15 + err0
