@@ -3,6 +3,8 @@
 
 """General utility functions used across the analysis package."""
 
+from copy import deepcopy
+
 import numpy as np
 import sncosmo
 from astropy.time import Time
@@ -128,3 +130,39 @@ def get_effective_wavelength(band_name):
     """
 
     return sncosmo.get_bandpass(band_name).wave_eff
+
+
+def calc_model_chisq(data, result, model):
+    """Calculate the chi-squared for a given data table and model
+
+    Chi-squareds are calculated using parameter values from ``model``. Degrees
+    of freedom are calculated using the number of varied parameters specified
+    is the ``result`` object.
+
+    Args:
+        data    (Table): An sncosmo input table
+        model   (Model): An sncosmo Model
+        result (Result): sncosmo fitting result
+
+    Returns:
+        The un-normalized chi-squared
+        The number of data points used in the calculation
+    """
+
+    data = deepcopy(data)
+
+    # Drop any data that is not withing the model's range
+    min_band_wave = [sncosmo.get_bandpass(b).minwave() for b in data['band']]
+    max_band_wave = [sncosmo.get_bandpass(b).maxwave() for b in data['band']]
+    data = data[
+        (data['time'] >= model.mintime()) &
+        (data['time'] <= model.maxtime()) &
+        (min_band_wave >= model.minwave()) &
+        (max_band_wave <= model.maxwave())
+        ]
+
+    if len(data) == 0:
+        raise ValueError('No data within model range')
+
+    return sncosmo.chisq(data, model), len(data) - len(result.vparam_names)
+
